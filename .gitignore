@@ -1,0 +1,31 @@
+# Python voiceover generation artefacts
+temp_ryan/
+temp_vo/
+vo_parts/
+*.pyc
+__pycache__/
+
+# Generated audio variants (keep only vo_ryan.mp3 and music.mp3)
+vo.mp3
+vo_v2.mp3
+vo_v3.mp3
+rishi_preview.mp3
+test.mp3
+
+# Video export
+.frames/
+analytex_film.mp4
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase
+.firebase/
+
+# Secrets
+.env
+service-account.json

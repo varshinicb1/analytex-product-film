@@ -1,0 +1,26 @@
+{
+  "name": "analytex-product-film",
+  "version": "1.0.0",
+  "description": "AnalyteX cinematic WebGL product film by VidyuthLabs — NanoX SPE cartridge platform showcase",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve . -p 8765",
+    "capture": "node capture_video.js",
+    "gen-vo": "python gen_ryan.py"
+  },
+  "keywords": [
+    "three.js",
+    "webgl",
+    "product-film",
+    "electrochemistry",
+    "analytex",
+    "vidyuthlabs",
+    "nanox"
+  ],
+  "author": "VidyuthLabs",
+  "license": "MIT",
+  "devDependencies": {
+    "puppeteer": "^22.0.0",
+    "serve": "^14.2.0"
+  }
+}

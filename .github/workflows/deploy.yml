@@ -1,0 +1,123 @@
+name: Deploy AnalyteX Film to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # JOB 1: Validate — lint HTML + JS, check file sizes
+  # ──────────────────────────────────────────────────────────
+  validate:
+    name: Validate Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check critical files exist
+        run: |
+          echo "Checking required files..."
+          test -f index.html && echo "✅ index.html"
+          test -f main.js    && echo "✅ main.js"
+          test -f vo_ryan.mp3 && echo "✅ vo_ryan.mp3"
+          test -f music.mp3   && echo "✅ music.mp3"
+          echo "All critical files present."
+
+      - name: Check main.js size (must be < 200KB)
+        run: |
+          SIZE=$(wc -c < main.js)
+          echo "main.js size: ${SIZE} bytes"
+          if [ "$SIZE" -gt 204800 ]; then
+            echo "❌ main.js exceeds 200KB limit"
+            exit 1
+          fi
+          echo "✅ main.js size OK"
+
+      - name: Validate HTML structure
+        run: |
+          if grep -q "NanoX\|NANOX" index.html || grep -q "NanoX\|NANOX" main.js; then
+            echo "✅ NanoX branding present"
+          fi
+          if grep -q "VidyutX" main.js; then
+            echo "❌ Old VidyutX branding still present in main.js"
+            exit 1
+          fi
+          if grep -q "IP67" main.js; then
+            echo "❌ IP67 still present in main.js"
+            exit 1
+          fi
+          echo "✅ Branding validation passed"
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 2: Deploy — Firebase Hosting (only on push to main)
+  # ──────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Firebase Hosting
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy to Firebase Hosting
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" | base64 --decode > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          firebase deploy --only hosting --project vidyuthlabs-analytex
+
+      - name: Post deployment URL
+        run: |
+          echo "🚀 Deployed!"
+          echo "🌐 Live URL: https://vidyuthlabs-analytex.web.app"
+
+  # ──────────────────────────────────────────────────────────
+  # JOB 3: Preview Deploy (on pull requests)
+  # ──────────────────────────────────────────────────────────
+  preview:
+    name: Firebase Preview Deploy (PR)
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'pull_request'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy Preview Channel
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: vidyuthlabs-analytex
+          channelId: pr-${{ github.event.pull_request.number }}
+          expires: 7d
