@@ -8,7 +8,7 @@ analytex_film.mp4
 .video_only.mp4
 
 # Node
-node_modules/
+node_modules
 
 # OS
 .DS_Store
