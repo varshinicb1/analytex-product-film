@@ -1,0 +1,19 @@
+{
+ "duration": 78.0,
+ "note": "On-screen type cues (no voiceover). Scene and camera timing in main.js is derived from these.",
+ "cues": [
+  {"scene": "cold",     "start": 1.4,  "end": 5.2,  "text": "Lead. Cadmium. Arsenic."},
+  {"scene": "cold",     "start": 5.8,  "end": 9.4,  "text": "You can't see them in water. Testing usually takes a lab and a week."},
+  {"scene": "reveal",   "start": 11.6, "end": 14.6, "text": "AnalyteX"},
+  {"scene": "reveal",   "start": 15.2, "end": 18.8, "text": "A portable potentiostat."},
+  {"scene": "methods",  "start": 21.0, "end": 28.6, "text": "CV, DPV, SWV, CA, EIS."},
+  {"scene": "methods",  "start": 29.0, "end": 32.4, "text": "Set up and run from the phone, over Bluetooth."},
+  {"scene": "assay",    "start": 33.8, "end": 35.8, "text": "Insert the electrode."},
+  {"scene": "assay",    "start": 36.8, "end": 38.6, "text": "Add one drop."},
+  {"scene": "assay",    "start": 41.6, "end": 46.4, "text": "Each peak is a metal. Its height is how much."},
+  {"scene": "result",   "start": 49.4, "end": 54.0, "text": "Compared against IS 10500 drinking-water limits."},
+  {"scene": "platform", "start": 56.8, "end": 59.6, "text": "Change the electrode, change the test."},
+  {"scene": "platform", "start": 60.2, "end": 65.4, "text": "Heavy metals first. Other sensors in development."},
+  {"scene": "finale",   "start": 68.4, "end": 72.0, "text": ""}
+ ]
+}

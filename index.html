@@ -3,256 +3,175 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#030508">
-<title>AnalyteX — One Device. Every Threat. | VidyuthLabs</title>
+<meta name="theme-color" content="#03060b">
+<title>AnalyteX — the film · Vidyuthlabs</title>
+<meta name="description" content="A 90-second film about AnalyteX, the portable potentiostat from Vidyuthlabs: five electrochemical techniques, swappable screen-printed electrodes, results on your phone.">
+<meta property="og:title" content="AnalyteX — Know what's in your water">
+<meta property="og:description" content="A 90-second film about AnalyteX, the portable potentiostat from Vidyuthlabs.">
+<meta property="og:type" content="video.other">
+<meta property="og:url" content="https://vidyuthlabs-analytex.web.app/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="modulepreload" href="./vendor/three/build/three.module.js">
+<link rel="preload" href="./timeline.json" as="fetch" crossorigin>
 <style>
+  :root {
+    --ink: #0e0e0f;
+    --panel: rgba(8, 14, 24, .62);
+    --line: rgba(255, 255, 255, .12);
+    --text: #eef3f8;
+    --muted: #8d9298;
+    --cyan: #38d6ff;
+    --gold: #d9b24a;
+    --gold-hi: #ffd27a;
+    --display: "Inter", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --gutter-l: max(20px, env(safe-area-inset-left, 0px));
+    --gutter-r: max(20px, env(safe-area-inset-right, 0px));
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    color-scheme: dark;
+  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body {
-    width: 100%; height: 100%;
-    background: #030508;
-    overflow: hidden;
-    font-family: 'Inter', sans-serif;
-  }
-  canvas { display: block; }
+  html, body { height: 100%; background: var(--ink); color: var(--text); overflow: hidden; font-family: var(--body); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 3px; border-radius: 8px; }
+  #stage { position: fixed; inset: 0; outline: none; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
 
-  /* ── PROGRESS BAR ── */
-  #prog {
-    position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 20;
-    background: linear-gradient(90deg, #00e5ff, #0080ff);
-    transform: scaleX(0); transform-origin: left;
-    transition: transform 0.1s linear;
-    box-shadow: 0 0 8px rgba(0,229,255,0.6);
-  }
+  /* ── cinematic dip to black at cuts ── */
+  #dip { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 5; opacity: 1; }
 
-  /* ── HUD BRANDING ── */
-  #hud {
-    position: fixed; left: 28px; top: 24px; z-index: 15;
-    color: #00e5ff; font-family: 'Outfit', sans-serif; font-weight: 700;
-    letter-spacing: 4px; font-size: 12px; opacity: 0.9;
-    text-shadow: 0 0 20px rgba(0,229,255,0.4);
-    pointer-events: none;
-  }
+  /* letterbox bars give the frame a film feel on wide screens */
+  .bars::before, .bars::after { content: ""; position: fixed; left: 0; right: 0; height: 0px; background: #000; z-index: 4; pointer-events: none; }
+  .bars::before { top: 0; } .bars::after { bottom: 0; }
+  @media (max-aspect-ratio: 4/3) { .bars::before, .bars::after { display: none; } }
 
-  /* ── CHAPTER OVERLAY ── */
-  #ch-overlay {
-    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    text-align: center; pointer-events: none; z-index: 12;
-    opacity: 0; transition: opacity 0.6s ease;
-    padding: 48px 56px;
-    border-radius: 24px;
-    /* Cinematic scrim: dark dim behind the text */
-    background: radial-gradient(ellipse at 50% 50%, rgba(2,6,14,0.72) 0%, rgba(2,6,14,0.55) 60%, transparent 100%);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-    min-width: 480px;
-    max-width: 80vw;
-  }
-  #ch-overlay.visible { opacity: 1; }
-  #ch-title {
-    font-family: 'Outfit', sans-serif; font-weight: 900;
-    font-size: clamp(32px, 7vw, 80px);
-    color: #fff;
-    letter-spacing: -1px;
-    background: linear-gradient(135deg, #ffffff 40%, #8ab4d0 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 40px rgba(0,229,255,0.25)) drop-shadow(0 2px 12px rgba(0,0,0,0.8));
-    line-height: 1.1;
-  }
-  #ch-sub {
-    font-family: 'Outfit', sans-serif; font-weight: 600;
-    font-size: clamp(12px, 2.5vw, 18px);
-    color: #00e5ff; letter-spacing: 5px; margin-top: 14px;
-    opacity: 0.9;
-    text-shadow: 0 0 20px rgba(0,229,255,0.5);
-  }
+  /* ── wordmark ── */
+  #mark { position: fixed; top: max(22px, env(safe-area-inset-top, 0px)); left: var(--gutter-l); z-index: 6; display: flex; align-items: center; gap: 10px; font: 600 11px/1 var(--body); letter-spacing: .32em; color: #9a9fa5; pointer-events: none; }
+  #mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+  @media (max-aspect-ratio: 4/3) { #mark { top: max(18px, env(safe-area-inset-top, 0px)); } }
 
-  /* ── SUBTITLE BAR ── */
-  #cap {
-    position: fixed;
-    left: 50%; bottom: max(env(safe-area-inset-bottom, 20px), 7%);
-    transform: translateX(-50%);
-    text-align: center;
-    color: #f0f4f8;
-    font-family: 'Inter', sans-serif;
-    font-size: clamp(13px, 2.2vw, 22px);
-    font-weight: 500;
-    line-height: 1.55;
-    max-width: min(860px, 88vw);
-    width: 88%;
-    background: rgba(8, 14, 24, 0.55);
-    backdrop-filter: blur(16px) saturate(1.5);
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
-    border: 1px solid rgba(0, 229, 255, 0.1);
-    border-radius: 20px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset;
-    padding: 14px 28px;
-    opacity: 0;
-    transition: opacity 0.35s ease;
-    pointer-events: none;
-    z-index: 8;
-  }
+  /* ── on-screen type (the film's only words) ── */
+  #cap { position: fixed; left: max(var(--gutter-l), 7vw); bottom: calc(11vh + var(--safe-b)); z-index: 7;
+    max-width: min(18ch, calc(100vw - 40px)); text-align: left; text-wrap: balance;
+    font: 500 clamp(26px, 3.4vw, 46px)/1.12 var(--body); letter-spacing: -.02em; color: #f2f3f4;
+    opacity: 0; transform: translateY(6px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; }
+  #cap.on { opacity: 1; transform: none; }
+  .ctl #cap { bottom: calc(11vh + 40px + var(--safe-b)); }
+  @media (max-aspect-ratio: 4/3) { #cap { left: var(--gutter-l); bottom: calc(40px + var(--safe-b)); max-width: calc(100vw - 40px); } .ctl #cap { bottom: calc(100px + var(--safe-b)); } }
 
-  /* ── REPLAY BUTTON ── */
-  #replay {
-    position: fixed; right: max(env(safe-area-inset-right, 24px), 24px);
-    bottom: max(env(safe-area-inset-bottom, 24px), 24px);
-    background: rgba(10, 16, 26, 0.8);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    color: #c7d0da;
-    border: 1px solid rgba(0, 229, 255, 0.18);
-    font-family: 'Outfit', sans-serif; font-weight: 600;
-    font-size: 13px; letter-spacing: 1.5px;
-    padding: 10px 22px; border-radius: 999px;
-    cursor: pointer; opacity: 0;
-    transition: opacity 0.4s, background 0.2s, color 0.2s, border-color 0.2s;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4); z-index: 15;
+  /* ── controls ── */
+  #controls { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; padding: 26px var(--gutter-r) calc(14px + var(--safe-b)) var(--gutter-l);
+    background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,0)); display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 14px; align-items: center;
+    opacity: 0; transition: opacity .35s ease; }
+  #controls.on { opacity: 1; }
+  #controls:focus-within { opacity: 1; }
+  .ctl { font: 600 13px/1 var(--body); letter-spacing: .04em; padding: 10px 14px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid var(--line); color: #dfe8f1; white-space: nowrap; }
+  .ctl:hover { background: rgba(255,255,255,.12); }
+  .ctl[aria-pressed="false"] { color: var(--muted); }
+  #pp { min-width: 84px; background: var(--gold); color: #1a1206; border-color: transparent; }
+  #pp:hover { background: var(--gold-hi); }
+  #time { font: 500 12px/1 var(--body); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #track { position: relative; height: 26px; cursor: pointer; }
+  #track::before { content: ""; position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.14); }
+  #fill { position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 2px; background: #e8eaed; transform-origin: left; transform: scaleX(0); }
+  .tick { position: absolute; top: 5px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; }
+  .tick::after { content: ""; position: absolute; left: 6px; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: #fff; opacity: .7; }
+  .tick:hover::after { transform: scale(1.8); opacity: 1; }
+  @media (max-width: 560px) {
+    #controls { grid-template-columns: auto 1fr auto; row-gap: 6px; }
+    #time { display: none; }
+    #mute { display: none; }
   }
-  #replay:hover {
-    background: rgba(0,229,255,0.12);
-    color: #fff; border-color: rgba(0,229,255,0.5);
-  }
+  .paused #controls { opacity: 1; }
 
-  /* ── START OVERLAY ── */
-  #start {
-    position: fixed; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 40px 24px;
-    background: radial-gradient(ellipse at 50% 42%, #0b1829 0%, #050a12 55%, #020508 100%);
-    z-index: 20; transition: opacity 0.9s ease;
-  }
-  .start-eyebrow {
-    font-family: 'Outfit', sans-serif; font-weight: 700;
-    letter-spacing: 6px; font-size: clamp(10px, 1.5vw, 14px);
-    color: #00e5ff; opacity: 0.85; margin-bottom: 14px;
-  }
-  .start-title {
-    font-family: 'Outfit', sans-serif; font-weight: 900;
-    font-size: clamp(52px, 12vw, 104px);
-    letter-spacing: -2px; line-height: 1;
-    background: linear-gradient(170deg, #ffffff 40%, #6fa8c9 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 60px rgba(0,229,255,0.08));
-  }
-  .start-rule {
-    width: 48px; height: 1.5px; margin: 22px 0;
-    background: linear-gradient(90deg, transparent, #00e5ff, transparent);
-  }
-  .start-desc {
-    font-family: 'Inter', sans-serif; font-weight: 400;
-    color: #8a9aaa; font-size: clamp(14px, 2vw, 18px);
-    text-align: center; max-width: 440px; line-height: 1.65;
-    margin-bottom: 42px;
-  }
-  #play {
-    position: relative;
-    background: linear-gradient(135deg, #b8860b 0%, #ffd700 28%, #fffacd 50%, #f0c040 70%, #c8960c 85%, #8b6914 100%);
-    color: #1a0a00;
-    border: none;
-    font-family: 'Outfit', sans-serif; font-weight: 700;
-    font-size: clamp(15px, 2vw, 18px); letter-spacing: 2.5px;
-    padding: 18px 58px; border-radius: 999px;
-    cursor: pointer;
-    box-shadow:
-      0 0 0 1px rgba(255,215,0,0.55),
-      0 0 0 3px rgba(184,134,11,0.2),
-      0 6px 32px rgba(255,200,0,0.40),
-      0 2px 8px rgba(0,0,0,0.6),
-      inset 0 1px 0 rgba(255,255,255,0.5),
-      inset 0 -1px 0 rgba(0,0,0,0.25);
-    transition: transform 0.28s cubic-bezier(.34,1.56,.64,1), box-shadow 0.28s, filter 0.28s;
-    overflow: hidden;
-  }
-  #play::before {
-    content: '';
-    position: absolute; inset: 0; border-radius: 999px;
-    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.55) 50%, transparent 65%);
-    background-size: 200% 100%;
-    animation: goldShimmer 3.2s ease-in-out infinite;
-    pointer-events: none;
-  }
-  @keyframes goldShimmer {
-    0%   { background-position: 200% 0; }
-    60%  { background-position: -200% 0; }
-    100% { background-position: -200% 0; }
-  }
-  #play:hover {
-    transform: scale(1.05);
-    box-shadow:
-      0 0 0 1px rgba(255,215,0,0.8),
-      0 0 0 4px rgba(184,134,11,0.3),
-      0 8px 48px rgba(255,200,0,0.65),
-      0 2px 12px rgba(0,0,0,0.65),
-      inset 0 1px 0 rgba(255,255,255,0.6),
-      inset 0 -1px 0 rgba(0,0,0,0.3);
-    filter: brightness(1.08);
-  }
-  #play:active { transform: scale(0.97); }
+  /* ── end card ── */
+  #endcard { position: fixed; inset: 0; z-index: 8; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center;
+    padding: 24px var(--gutter-r) calc(90px + var(--safe-b)) var(--gutter-l);
+    background: radial-gradient(ellipse at 50% 45%, rgba(14,14,15,.55), rgba(14,14,15,.92) 70%);
+    opacity: 0; visibility: hidden; transition: opacity 1.2s ease, visibility 0s 1.2s; }
+  #endcard.on { opacity: 1; visibility: visible; transition: opacity 1.2s ease; }
+  .end-eyebrow { font: 600 12px/1 var(--body); letter-spacing: .34em; color: var(--gold-hi); }
+  .end-title { font: 600 clamp(44px, 8vw, 96px)/.95 var(--body); letter-spacing: -.04em;
+    color: #f2f3f4; }
+  .end-line { font: 500 clamp(17px, 2.1vw, 24px)/1.4 var(--body); color: #c9d6e3; }
+  .end-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px; }
+  .btn-gold { display: inline-block; text-decoration: none; font: 700 15px/1 var(--body); letter-spacing: .06em; color: #1a1206; padding: 16px 30px; border-radius: 999px;
+    background: var(--gold); transition: background .2s ease; }
+  .btn-gold:hover { background: #e4c060; }
+  .btn-ghost { font: 600 15px/1 var(--body); letter-spacing: .04em; padding: 16px 26px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); color: #e6edf4; text-decoration: none; }
+  .btn-ghost:hover { background: rgba(255,255,255,.08); }
+  .end-note { margin-top: 18px; max-width: 46ch; font: 400 12.5px/1.55 var(--body); color: #77899a; }
 
-  .start-specs {
-    margin-top: 36px;
-    display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
-    opacity: 0.45;
+  /* ── start screen ── */
+  #start { position: fixed; inset: 0; z-index: 20; display: grid; align-content: center; justify-items: start;
+    padding: 40px var(--gutter-r) calc(40px + var(--safe-b)) max(var(--gutter-l), 8vw);
+    background: linear-gradient(90deg, rgba(14,14,15,.94) 0%, rgba(14,14,15,.82) 42%, rgba(14,14,15,.25) 75%, rgba(14,14,15,0) 100%);
+    transition: opacity .9s ease, visibility 0s .9s; }
+  #start.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+  .s-eyebrow { display: flex; align-items: center; gap: 10px; font: 600 12px/1 var(--body); letter-spacing: .34em; color: #9a9fa5; }
+  .s-eyebrow i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); }
+  .s-title { margin-top: 22px; font: 600 clamp(54px, 10vw, 120px)/.9 var(--body); letter-spacing: -.045em;
+    color: #f2f3f4; }
+  .s-line { margin-top: 20px; max-width: 30ch; font: 500 clamp(18px, 2.2vw, 24px)/1.4 var(--body); color: #d4dee8; text-wrap: balance; }
+  .s-desc { margin-top: 12px; max-width: 44ch; font: 400 15px/1.6 var(--body); color: var(--muted); }
+  #play { margin-top: 34px; }
+  .s-specs { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .s-specs span { font: 600 11px/1 var(--body); letter-spacing: .16em; color: #a7acb2; padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.03); }
+  .s-sound { margin-top: 16px; font: 400 13px/1 var(--body); color: #66788a; }
+  @media (max-width: 700px) {
+    #start { justify-items: center; text-align: center; padding-left: var(--gutter-l); background: radial-gradient(ellipse at 50% 50%, rgba(14,14,15,.7), rgba(14,14,15,.95) 75%); }
+    .s-specs { justify-content: center; }
   }
-  .start-spec {
-    font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600;
-    letter-spacing: 2px; color: #c7d0da;
-  }
-
-  /* ── CHAPTER CURTAIN — full-black cinematic transition ── */
-  #curtain {
-    position: fixed; inset: 0; background: #000;
-    pointer-events: none; z-index: 18;
-    opacity: 0; transition: opacity 0.45s ease;
-  }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 480px) {
-    #hud { font-size: 10px; letter-spacing: 2.5px; left: 18px; top: 18px; }
-    #cap { padding: 10px 16px; border-radius: 16px; bottom: max(env(safe-area-inset-bottom,16px),5%); }
-    .start-title { font-size: 58px; }
-    #play { padding: 15px 40px; font-size: 15px; }
-    #replay { right: 16px; bottom: 16px; font-size: 12px; padding: 8px 16px; }
-  }
-  @media (min-width: 1400px) {
-    #cap { font-size: 22px; }
-  }
+  .capture #controls, .capture #start { display: none !important; }
+  .capture *, .capture *::before, .capture *::after { transition: none !important; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
 </script>
 </head>
 <body>
-  <div id="prog"></div>
-  <div id="curtain"></div>
-  <div id="hud">VIDYUTHLABS · ANALYTEX</div>
+  <div id="stage" tabindex="-1"></div>
+  <div id="dip"></div>
+  <div id="mark" aria-hidden="true"><i></i>VIDYUTHLABS</div>
 
-  <div id="ch-overlay">
-    <div id="ch-title"></div>
-    <div id="ch-sub"></div>
-  </div>
+  <div id="cap" role="status" aria-live="polite"></div>
 
-  <div id="cap"></div>
-  <button id="replay">↺ &nbsp;REPLAY</button>
-
-  <div id="start">
-    <div class="start-eyebrow">VIDYUTHLABS PRESENTS</div>
-    <div class="start-title">AnalyteX</div>
-    <div class="start-rule"></div>
-    <div class="start-desc">One device. Every threat. A cinematic walkthrough of the world's most versatile portable potentiostat.</div>
-    <button id="play">▶ &nbsp; PLAY FILM</button>
-    <div class="start-specs">
-      <span class="start-spec">DPV · SWV · CA · CV</span>
-      <span class="start-spec">WIFI · BT</span>
-      <span class="start-spec">NanoX CARTRIDGES</span>
-      <span class="start-spec">AI ANALYTICS</span>
+  <section id="endcard" aria-label="End of film">
+    <div class="end-eyebrow">VIDYUTHLABS</div>
+    <div class="end-title">AnalyteX</div>
+    <div class="end-line">Know what's in your water.</div>
+    <div class="end-actions">
+      <a class="btn-gold" href="https://vidyuthlabs.co.in/" target="_blank" rel="noopener">Visit vidyuthlabs.co.in</a>
+      <button class="btn-ghost" id="replay" type="button">Watch again</button>
     </div>
+    <p class="end-note">The heavy-metal assay is under validation. Results shown in this film are demonstration data from a simulated sample. Formalin, pesticide and soil-nutrient sensors are in development.</p>
+  </section>
+
+  <div id="controls" class="on">
+    <button class="ctl" id="pp" type="button" aria-label="Play film">Play</button>
+    <div id="track" role="slider" tabindex="0" aria-label="Film position" aria-valuemin="0" aria-valuemax="90" aria-valuenow="0"><div id="fill"></div></div>
+    <span id="time">0:00</span>
+    <button class="ctl" id="mute" type="button" aria-pressed="false" title="Sound (M)">Sound on</button>
   </div>
 
-  <audio id="vo" preload="auto" src="./vo_ryan.mp3"></audio>
-  <audio id="music" preload="auto" src="./music.mp3" loop></audio>
+  <section id="start" aria-label="AnalyteX film">
+    <div class="s-eyebrow"><i></i>VIDYUTHLABS</div>
+    <h1 class="s-title">AnalyteX</h1>
+    <p class="s-line">A portable potentiostat for testing water.</p>
+    <p class="s-desc">Five electrochemical techniques, swappable screen-printed electrodes, and results on your phone.</p>
+    <button class="btn-gold" id="play" type="button">Play film</button>
+    <div class="s-specs" aria-label="Key specifications">
+      <span>CV · DPV · SWV · CA · EIS</span>
+      <span>BLUETOOTH LE · USB-C</span>
+      <span>SCREEN-PRINTED ELECTRODES</span>
+    </div>
+    <p class="s-sound">Music only · 1:18</p>
+  </section>
+
+  <audio id="music" preload="auto" src="./music.mp3"></audio>
   <script type="module" src="./main.js"></script>
 </body>
 </html>
