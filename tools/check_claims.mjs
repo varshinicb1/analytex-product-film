@@ -28,6 +28,7 @@ for (const [f, src] of all) {
 }
 for (const [re, why] of REQUIRED) if (!all.some(([, s]) => re.test(s))) { console.error(`missing ${why}`); bad++; }
 const tl = JSON.parse(fs.readFileSync('timeline.json', 'utf8'));
-for (const f of [tl.voice && 'vo.mp3', 'music.mp3']) if (!fs.existsSync(f)) { console.error(`missing ${f}`); bad++; }
+if (!(tl.duration > 0 && tl.cues.length)) { console.error('timeline.json has no cues'); bad++; }
+for (const f of ['music.mp3']) if (!fs.existsSync(f)) { console.error(`missing ${f}`); bad++; }
 if (bad) { console.error(`\n${bad} claim problem(s)`); process.exit(1); }
 console.log(`claims OK (${FILES.join(', ')})`);

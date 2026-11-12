@@ -12,20 +12,20 @@
 <meta property="og:url" content="https://vidyuthlabs-analytex.web.app/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="modulepreload" href="./vendor/three/build/three.module.js">
 <link rel="preload" href="./timeline.json" as="fetch" crossorigin>
 <style>
   :root {
-    --ink: #03060b;
+    --ink: #0e0e0f;
     --panel: rgba(8, 14, 24, .62);
-    --line: rgba(120, 190, 255, .14);
+    --line: rgba(255, 255, 255, .12);
     --text: #eef3f8;
-    --muted: #8b9cad;
+    --muted: #8d9298;
     --cyan: #38d6ff;
     --gold: #d9b24a;
     --gold-hi: #ffd27a;
-    --display: "Outfit", "Inter", system-ui, sans-serif;
+    --display: "Inter", system-ui, sans-serif;
     --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
     --gutter-l: max(20px, env(safe-area-inset-left, 0px));
     --gutter-r: max(20px, env(safe-area-inset-right, 0px));
@@ -43,32 +43,23 @@
   #dip { position: fixed; inset: 0; background: #000; pointer-events: none; z-index: 5; opacity: 1; }
 
   /* letterbox bars give the frame a film feel on wide screens */
-  .bars::before, .bars::after { content: ""; position: fixed; left: 0; right: 0; height: 5.5vh; background: #000; z-index: 4; pointer-events: none; }
+  .bars::before, .bars::after { content: ""; position: fixed; left: 0; right: 0; height: 0px; background: #000; z-index: 4; pointer-events: none; }
   .bars::before { top: 0; } .bars::after { bottom: 0; }
   @media (max-aspect-ratio: 4/3) { .bars::before, .bars::after { display: none; } }
 
   /* ── wordmark ── */
-  #mark { position: fixed; top: max(calc(5.5vh + 16px), env(safe-area-inset-top, 0px)); left: var(--gutter-l); z-index: 6; display: flex; align-items: center; gap: 10px; font: 600 11px/1 var(--body); letter-spacing: .32em; color: #a9b8c7; pointer-events: none; }
-  #mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 12px var(--gold); }
+  #mark { position: fixed; top: max(22px, env(safe-area-inset-top, 0px)); left: var(--gutter-l); z-index: 6; display: flex; align-items: center; gap: 10px; font: 600 11px/1 var(--body); letter-spacing: .32em; color: #9a9fa5; pointer-events: none; }
+  #mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
   @media (max-aspect-ratio: 4/3) { #mark { top: max(18px, env(safe-area-inset-top, 0px)); } }
 
-  /* ── lower-third chapter label ── */
-  #lower { position: fixed; left: var(--gutter-l); top: max(calc(5.5vh + 62px), calc(env(safe-area-inset-top, 0px) + 50px)); z-index: 6; display: flex; align-items: baseline; gap: 14px; pointer-events: none; opacity: 0; transform: translateY(8px); transition: opacity .6s ease, transform .6s ease; }
-  #lower.on { opacity: 1; transform: none; }
-  #lower-n { font: 600 13px/1 var(--body); color: var(--gold-hi); letter-spacing: .2em; font-variant-numeric: tabular-nums; }
-  #lower-t { font: 700 clamp(22px, 3vw, 34px)/1.1 var(--display); letter-spacing: -.01em; }
-  #lower::before { content: ""; position: absolute; left: 0; top: -16px; width: 36px; height: 2px; background: var(--gold); }
-
-  /* ── captions ── */
-  #cap { position: fixed; left: 50%; bottom: calc(5.5vh + 22px + var(--safe-b)); transform: translate(-50%, 6px); z-index: 7;
-    max-width: min(820px, calc(100vw - 40px)); width: max-content; text-align: center; text-wrap: balance;
-    font: 500 clamp(15px, 1.7vw, 21px)/1.45 var(--body); color: #f4f7fa;
-    background: rgba(4, 8, 14, .66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    padding: 10px 18px; border-radius: 12px; opacity: 0; transition: opacity .25s ease, transform .25s ease; pointer-events: none; }
-  #cap.on { opacity: 1; transform: translate(-50%, 0); }
-  .nocc #cap { display: none; }
-  .ctl #cap { bottom: calc(5.5vh + 78px + var(--safe-b)); }
-  @media (max-aspect-ratio: 4/3) { #cap { bottom: calc(24px + var(--safe-b)); } .ctl #cap { bottom: calc(96px + var(--safe-b)); } }
+  /* ── on-screen type (the film's only words) ── */
+  #cap { position: fixed; left: max(var(--gutter-l), 7vw); bottom: calc(11vh + var(--safe-b)); z-index: 7;
+    max-width: min(18ch, calc(100vw - 40px)); text-align: left; text-wrap: balance;
+    font: 500 clamp(26px, 3.4vw, 46px)/1.12 var(--body); letter-spacing: -.02em; color: #f2f3f4;
+    opacity: 0; transform: translateY(6px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; }
+  #cap.on { opacity: 1; transform: none; }
+  .ctl #cap { bottom: calc(11vh + 40px + var(--safe-b)); }
+  @media (max-aspect-ratio: 4/3) { #cap { left: var(--gutter-l); bottom: calc(40px + var(--safe-b)); max-width: calc(100vw - 40px); } .ctl #cap { bottom: calc(100px + var(--safe-b)); } }
 
   /* ── controls ── */
   #controls { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9; padding: 26px var(--gutter-r) calc(14px + var(--safe-b)) var(--gutter-l);
@@ -84,7 +75,7 @@
   #time { font: 500 12px/1 var(--body); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   #track { position: relative; height: 26px; cursor: pointer; }
   #track::before { content: ""; position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.14); }
-  #fill { position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--cyan), var(--gold)); transform-origin: left; transform: scaleX(0); }
+  #fill { position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 2px; background: #e8eaed; transform-origin: left; transform: scaleX(0); }
   .tick { position: absolute; top: 5px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; }
   .tick::after { content: ""; position: absolute; left: 6px; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: #fff; opacity: .7; }
   .tick:hover::after { transform: scale(1.8); opacity: 1; }
@@ -98,17 +89,17 @@
   /* ── end card ── */
   #endcard { position: fixed; inset: 0; z-index: 8; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center;
     padding: 24px var(--gutter-r) calc(90px + var(--safe-b)) var(--gutter-l);
-    background: radial-gradient(ellipse at 50% 45%, rgba(3,6,11,.55), rgba(3,6,11,.92) 70%);
+    background: radial-gradient(ellipse at 50% 45%, rgba(14,14,15,.55), rgba(14,14,15,.92) 70%);
     opacity: 0; visibility: hidden; transition: opacity 1.2s ease, visibility 0s 1.2s; }
   #endcard.on { opacity: 1; visibility: visible; transition: opacity 1.2s ease; }
   .end-eyebrow { font: 600 12px/1 var(--body); letter-spacing: .34em; color: var(--gold-hi); }
-  .end-title { font: 800 clamp(48px, 9vw, 108px)/.95 var(--display); letter-spacing: -.03em;
-    background: linear-gradient(175deg, #fff 35%, #9fc3dc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .end-title { font: 600 clamp(44px, 8vw, 96px)/.95 var(--body); letter-spacing: -.04em;
+    color: #f2f3f4; }
   .end-line { font: 500 clamp(17px, 2.1vw, 24px)/1.4 var(--body); color: #c9d6e3; }
   .end-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px; }
   .btn-gold { display: inline-block; text-decoration: none; font: 700 15px/1 var(--body); letter-spacing: .06em; color: #1a1206; padding: 16px 30px; border-radius: 999px;
-    background: linear-gradient(135deg, #b8862b, #ffd27a 45%, #d9b24a 80%); box-shadow: 0 8px 30px rgba(255,194,74,.28), inset 0 1px 0 rgba(255,255,255,.5); transition: transform .2s ease, box-shadow .2s ease; }
-  .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 10px 40px rgba(255,194,74,.4), inset 0 1px 0 rgba(255,255,255,.5); }
+    background: var(--gold); transition: background .2s ease; }
+  .btn-gold:hover { background: #e4c060; }
   .btn-ghost { font: 600 15px/1 var(--body); letter-spacing: .04em; padding: 16px 26px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); color: #e6edf4; text-decoration: none; }
   .btn-ghost:hover { background: rgba(255,255,255,.08); }
   .end-note { margin-top: 18px; max-width: 46ch; font: 400 12.5px/1.55 var(--body); color: #77899a; }
@@ -116,21 +107,21 @@
   /* ── start screen ── */
   #start { position: fixed; inset: 0; z-index: 20; display: grid; align-content: center; justify-items: start;
     padding: 40px var(--gutter-r) calc(40px + var(--safe-b)) max(var(--gutter-l), 8vw);
-    background: linear-gradient(90deg, rgba(3,6,11,.94) 0%, rgba(3,6,11,.82) 42%, rgba(3,6,11,.25) 75%, rgba(3,6,11,0) 100%);
+    background: linear-gradient(90deg, rgba(14,14,15,.94) 0%, rgba(14,14,15,.82) 42%, rgba(14,14,15,.25) 75%, rgba(14,14,15,0) 100%);
     transition: opacity .9s ease, visibility 0s .9s; }
   #start.gone { opacity: 0; visibility: hidden; pointer-events: none; }
-  .s-eyebrow { display: flex; align-items: center; gap: 10px; font: 600 12px/1 var(--body); letter-spacing: .34em; color: #a9b8c7; }
-  .s-eyebrow i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 14px var(--gold); }
-  .s-title { margin-top: 22px; font: 800 clamp(58px, 11vw, 132px)/.9 var(--display); letter-spacing: -.035em;
-    background: linear-gradient(175deg, #fff 40%, #8fb8d4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .s-eyebrow { display: flex; align-items: center; gap: 10px; font: 600 12px/1 var(--body); letter-spacing: .34em; color: #9a9fa5; }
+  .s-eyebrow i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); }
+  .s-title { margin-top: 22px; font: 600 clamp(54px, 10vw, 120px)/.9 var(--body); letter-spacing: -.045em;
+    color: #f2f3f4; }
   .s-line { margin-top: 20px; max-width: 30ch; font: 500 clamp(18px, 2.2vw, 24px)/1.4 var(--body); color: #d4dee8; text-wrap: balance; }
   .s-desc { margin-top: 12px; max-width: 44ch; font: 400 15px/1.6 var(--body); color: var(--muted); }
   #play { margin-top: 34px; }
   .s-specs { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 10px; }
-  .s-specs span { font: 600 11px/1 var(--body); letter-spacing: .16em; color: #b6c4d2; padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.03); }
+  .s-specs span { font: 600 11px/1 var(--body); letter-spacing: .16em; color: #a7acb2; padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.03); }
   .s-sound { margin-top: 16px; font: 400 13px/1 var(--body); color: #66788a; }
   @media (max-width: 700px) {
-    #start { justify-items: center; text-align: center; padding-left: var(--gutter-l); background: radial-gradient(ellipse at 50% 50%, rgba(3,6,11,.7), rgba(3,6,11,.95) 75%); }
+    #start { justify-items: center; text-align: center; padding-left: var(--gutter-l); background: radial-gradient(ellipse at 50% 50%, rgba(14,14,15,.7), rgba(14,14,15,.95) 75%); }
     .s-specs { justify-content: center; }
   }
   .capture #controls, .capture #start { display: none !important; }
@@ -141,12 +132,11 @@
 { "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
 </script>
 </head>
-<body class="bars">
+<body>
   <div id="stage" tabindex="-1"></div>
   <div id="dip"></div>
   <div id="mark" aria-hidden="true"><i></i>VIDYUTHLABS</div>
 
-  <div id="lower" aria-hidden="true"><span id="lower-n"></span><span id="lower-t"></span></div>
   <div id="cap" role="status" aria-live="polite"></div>
 
   <section id="endcard" aria-label="End of film">
@@ -164,25 +154,23 @@
     <button class="ctl" id="pp" type="button" aria-label="Play film">Play</button>
     <div id="track" role="slider" tabindex="0" aria-label="Film position" aria-valuemin="0" aria-valuemax="90" aria-valuenow="0"><div id="fill"></div></div>
     <span id="time">0:00</span>
-    <button class="ctl" id="cc" type="button" aria-pressed="true" title="Captions (C)">CC</button>
     <button class="ctl" id="mute" type="button" aria-pressed="false" title="Sound (M)">Sound on</button>
   </div>
 
   <section id="start" aria-label="AnalyteX film">
-    <div class="s-eyebrow"><i></i>VIDYUTHLABS PRESENTS</div>
+    <div class="s-eyebrow"><i></i>VIDYUTHLABS</div>
     <h1 class="s-title">AnalyteX</h1>
-    <p class="s-line">A portable potentiostat that puts a water lab in your hand.</p>
+    <p class="s-line">A portable potentiostat for testing water.</p>
     <p class="s-desc">Five electrochemical techniques, swappable screen-printed electrodes, and results on your phone.</p>
     <button class="btn-gold" id="play" type="button">Play film</button>
     <div class="s-specs" aria-label="Key specifications">
       <span>CV · DPV · SWV · CA · EIS</span>
       <span>BLUETOOTH LE · USB-C</span>
-      <span>NANOX ELECTRODES</span>
+      <span>SCREEN-PRINTED ELECTRODES</span>
     </div>
-    <p class="s-sound">Best with sound · captions on</p>
+    <p class="s-sound">Music only · 1:18</p>
   </section>
 
-  <audio id="vo" preload="auto" src="./vo.mp3"></audio>
   <audio id="music" preload="auto" src="./music.mp3"></audio>
   <script type="module" src="./main.js"></script>
 </body>

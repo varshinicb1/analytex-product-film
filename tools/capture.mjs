@@ -4,9 +4,8 @@
 //
 // Opens the film in ?capture mode (no start screen, no controls, no CSS
 // transitions), seeks to every frame with window.__film.seek(t), screenshots it,
-// and pipes the frames to ffmpeg. The audio is mixed from vo.mp3 + music.mp3 the
-// same way the player does it: music starts DUR-78 s in, ducks under the voice
-// and fades out over the last 3 s. Needs: playwright (with Chromium) and ffmpeg.
+// and pipes the frames to ffmpeg, then adds music.mp3 faded out over the last 3 s
+// (the same mix the player uses). Needs: playwright (with Chromium) and ffmpeg.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import http from 'node:http';
@@ -66,14 +65,9 @@ await browser.close();
 server.close();
 console.log('\nvideo done, mixing audio…');
 
-const MUSIC_OFF = Math.max(0, DUR - 78);
-const filter = [
-  `[1:a]adelay=${Math.round(MUSIC_OFF * 1000)}:all=1,volume=0.34,afade=t=out:st=${(DUR - 3).toFixed(2)}:d=3[m]`,
-  `[2:a]asplit=2[v][sc]`,
-  `[m][sc]sidechaincompress=threshold=0.015:ratio=8:attack=60:release=500[md]`,
-  `[v][md]amix=inputs=2:normalize=0:duration=first,atrim=0:${DUR.toFixed(2)}[a]`,
-].join(';');
-await run(['-y', '-loglevel', 'error', '-i', SILENT, '-i', path.join(ROOT, 'music.mp3'), '-i', path.join(ROOT, 'vo.mp3'),
-  '-filter_complex', filter, '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', OUT]);
+const END = N / FPS;
+await run(['-y', '-loglevel', 'error', '-i', SILENT, '-i', path.join(ROOT, 'music.mp3'),
+  '-filter_complex', `[1:a]volume=0.7,afade=t=out:st=${(END - 3).toFixed(2)}:d=3,atrim=0:${END.toFixed(2)}[a]`,
+  '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', OUT]);
 fs.unlinkSync(SILENT);
 console.log('wrote', OUT);

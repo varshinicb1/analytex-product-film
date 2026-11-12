@@ -27,7 +27,7 @@ jobs:
 
       - name: Check critical files exist
         run: |
-          for f in index.html main.js timeline.json vo.mp3 music.mp3 firebase.json vendor/three/build/three.module.js; do
+          for f in index.html main.js timeline.json music.mp3 firebase.json vendor/three/build/three.module.js; do
             test -f "$f" || { echo "❌ missing $f"; exit 1; }
             echo "✅ $f"
           done

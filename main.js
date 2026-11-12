@@ -17,15 +17,13 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const QS = new URLSearchParams(location.search);
 const CAPTURE = QS.has('capture');              // frame-exact export mode (tools/capture.mjs)
-const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ══════════════════════════════════════════════════════
-   TIMELINE  (from the voiceover)
+   TIMELINE  (on-screen type cues; no voiceover)
 ══════════════════════════════════════════════════════ */
 const TL = await fetch('./timeline.json').then(r => r.json());
 const DUR = TL.duration;
@@ -48,19 +46,9 @@ const A_INSERT = T.assay;                        // electrode slides into the sl
 const A_DROP   = cuesOf('assay')[1].start - 0.9; // dropper arrives
 const A_SWEEP  = cuesOf('assay')[2].start - 0.6; // measurement runs
 const A_SWEEP_END = cuesOf('assay')[2].end + 0.6;
-// Word timings inside the methods line, estimated from character offsets
-const METHOD_WORDS = ['Cyclic', 'Differential', 'Square', 'Chrono', 'Impedance'];
+// The phone steps through the five methods across the first methods cue
 const methodCue = cuesOf('methods')[0];
-const METHOD_T = METHOD_WORDS.map(w => {
-  const i = methodCue.text.indexOf(w);
-  return methodCue.start + (methodCue.end - methodCue.start) * (i / methodCue.text.length);
-});
-// Element words in the first line ("lead … cadmium … arsenic")
-const coldCue = CUES[0];
-const ELEMENT_T = ['lead', 'cadmium', 'arsenic'].map(w => {
-  const i = coldCue.text.indexOf(w);
-  return coldCue.start + (coldCue.end - coldCue.start) * (i / coldCue.text.length);
-});
+const METHOD_T = [0, 1, 2, 3, 4].map(i => methodCue.start - .4 + i * (methodCue.end - methodCue.start) / 5);
 
 const CHAPTERS = [
   { t: T.cold,     id: 'open',     label: 'Opening' },
@@ -81,20 +69,16 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 0.95;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.domElement.setAttribute('aria-hidden', 'true');
 document.getElementById('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x020508, 0.03);
-{
-  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
-  const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#0c1c2e'); g.addColorStop(.5, '#050c16'); g.addColorStop(1, '#020508');
-  x.fillStyle = g; x.fillRect(0, 0, 2, 256);
-  scene.background = Object.assign(new THREE.CanvasTexture(c), { colorSpace: THREE.SRGBColorSpace });
-}
+// A plain graphite studio: seamless backdrop, no fog, no grid, no glow.
+const STUDIO = 0x1b1c1e;
+scene.background = new THREE.Color(0x0e0e0f);
+scene.fog = new THREE.Fog(0x0e0e0f, 16, 34);
 
 const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 120);
 let distK = 1; // portrait screens pull the camera back so both objects stay in frame
@@ -111,31 +95,29 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.015).texture;
 scene.environmentIntensity = 0.55;
 
-/* ── Lights ── */
-const keyL = new THREE.DirectionalLight(0xfff6ec, 2.4);
-keyL.position.set(6, 10, 5); keyL.castShadow = true;
-keyL.shadow.mapSize.set(2048, 2048); keyL.shadow.bias = -0.0002;
+/* ── Lights: one soft key, a broad fill, a neutral back light ── */
+const keyL = new THREE.DirectionalLight(0xfff4e8, 2.2);
+keyL.position.set(-5, 9, 6); keyL.castShadow = true;
+keyL.shadow.mapSize.set(2048, 2048); keyL.shadow.bias = -0.0002; keyL.shadow.radius = 6;
 Object.assign(keyL.shadow.camera, { left: -8, right: 8, top: 12, bottom: -12 });
 scene.add(keyL);
-const rimL = new THREE.DirectionalLight(0x80c0ff, 1.3); rimL.position.set(-6, 4, -5); scene.add(rimL);
-const fillL = new THREE.DirectionalLight(0xc0d8ff, 0.3); fillL.position.set(2, -3, 6); scene.add(fillL);
-scene.add(new THREE.AmbientLight(0x0a1320, 1.0));
-const accentL = new THREE.PointLight(0x00e5ff, 0, 8, 2); accentL.position.set(0, 3.4, 1.8); scene.add(accentL);
-const goldL = new THREE.PointLight(0xffc24a, 0, 6, 2); goldL.position.set(0, 0.6, 2.2); scene.add(goldL);
+const rimL = new THREE.DirectionalLight(0xffffff, .9); rimL.position.set(5, 5, -6); scene.add(rimL);
+const fillL = new THREE.DirectionalLight(0xf0f2f5, .45); fillL.position.set(6, 1, 5); scene.add(fillL);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x1a1a1a, .25));
 
-/* ── Floor ── */
+/* ── Seamless sweep: floor curving up into the back wall ── */
 {
-  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
-  x.fillStyle = '#030810'; x.fillRect(0, 0, 512, 512);
-  x.strokeStyle = 'rgba(0,180,255,0.04)'; x.lineWidth = 1;
-  for (let i = 0; i <= 512; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 512); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(512, i); x.stroke(); }
-  x.strokeStyle = 'rgba(0,200,255,0.11)'; x.lineWidth = 1.5;
-  for (let i = 0; i <= 512; i += 128) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 512); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(512, i); x.stroke(); }
-  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(18, 18);
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: .22, metalness: .9, envMapIntensity: .25 }));
-  floor.rotation.x = -Math.PI / 2; floor.position.y = -3.4; floor.receiveShadow = true; scene.add(floor);
+  // profile in (z, y): flat floor, a quarter-circle cove, then the back wall
+  const R = 6, W = 80, D = 40, H = 30, ZC = -8, seg = 24;
+  const prof = [new THREE.Vector2(D, 0)];
+  for (let i = 0; i <= seg; i++) { const a = (i / seg) * Math.PI / 2; prof.push(new THREE.Vector2(ZC - R * Math.sin(a), R - R * Math.cos(a))); }
+  prof.push(new THREE.Vector2(ZC - R, H));
+  const g = new THREE.BufferGeometry(), pos = [], idx = [];
+  prof.forEach(v => { pos.push(-W / 2, v.y, v.x, W / 2, v.y, v.x); });
+  for (let i = 0; i < prof.length - 1; i++) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const sweep = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: STUDIO, roughness: .92, metalness: 0, envMapIntensity: .2, side: THREE.DoubleSide }));
+  sweep.position.y = -3.4; sweep.receiveShadow = true; scene.add(sweep);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -156,56 +138,8 @@ function ctex(w, h) {
 }
 function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 const FONT = '"Inter", system-ui, Arial, sans-serif';
-const DISPLAY = '"Outfit", "Inter", Arial, sans-serif';
+const DISPLAY = FONT;
 const font = (w, s, f = FONT) => `${w} ${s}px ${f}`;
-
-/* ══════════════════════════════════════════════════════
-   PARTICLES  — suspended "contaminants" in the cold open
-══════════════════════════════════════════════════════ */
-const PN = 140, pPos = new Float32Array(PN * 3), pSpd = [];
-for (let i = 0; i < PN; i++) {
-  pPos[i * 3] = (Math.random() - .5) * 22; pPos[i * 3 + 1] = Math.random() * 9 - 2.5; pPos[i * 3 + 2] = (Math.random() - .5) * 26;
-  pSpd.push({ vy: .02 + Math.random() * .05, ph: Math.random() * 6.28, a: .2 + Math.random() * .5 });
-}
-const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-const pBase = pPos.slice();
-const pMat = (() => {
-  const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d');
-  const g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
-  g.addColorStop(0, 'rgba(210,235,255,1)'); g.addColorStop(.35, 'rgba(90,170,255,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  x.fillStyle = g; x.fillRect(0, 0, 32, 32);
-  return new THREE.PointsMaterial({ size: .07, map: new THREE.CanvasTexture(c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: .5 });
-})();
-scene.add(new THREE.Points(pGeo, pMat));
-function animParticles(t, cam) {
-  // deterministic in t so seeking and frame export look identical
-  const a = pGeo.attributes.position.array;
-  for (let i = 0; i < PN; i++) {
-    const s = pSpd[i];
-    a[i * 3] = pBase[i * 3] + Math.sin(t * .3 + s.ph) * .35;
-    a[i * 3 + 1] = -2.5 + ((pBase[i * 3 + 1] + 2.5 + t * s.vy * 3) % 9.5);
-    a[i * 3 + 2] = pBase[i * 3 + 2] + Math.cos(t * .25 + s.ph) * .35;
-    if (cam) { const dx = a[i*3]-cam.x, dy = a[i*3+1]-cam.y, dz = a[i*3+2]-cam.z; if (dx*dx+dy*dy+dz*dz < 4.5) a[i*3+1] = -60; }
-  }
-  pGeo.attributes.position.needsUpdate = true;
-}
-
-/* Element labels that surface as they're named: Pb, Cd, As */
-const elemSprites = [
-  { sym: 'Pb', name: 'Lead', z: '82', pos: V(-2.6, 1.6, 9.5) },
-  { sym: 'Cd', name: 'Cadmium', z: '48', pos: V(2.4, 0.4, 8.0) },
-  { sym: 'As', name: 'Arsenic', z: '33', pos: V(-0.6, -0.4, 6.5) },
-].map((e, i) => {
-  const [c, x, tex] = ctex(256, 256);
-  x.strokeStyle = 'rgba(255,196,74,.85)'; x.lineWidth = 3; rr(x, 40, 40, 176, 176, 22); x.stroke();
-  x.fillStyle = 'rgba(255,196,74,.08)'; rr(x, 40, 40, 176, 176, 22); x.fill();
-  x.fillStyle = '#ffd27a'; x.font = font(600, 22); x.textAlign = 'left'; x.fillText(e.z, 58, 76);
-  x.fillStyle = '#ffffff'; x.font = font(800, 92, DISPLAY); x.textAlign = 'center'; x.fillText(e.sym, 128, 158);
-  x.fillStyle = '#b8c6d4'; x.font = font(500, 22); x.fillText(e.name, 128, 196);
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
-  s.scale.setScalar(1.25); s.position.copy(e.pos); scene.add(s);
-  return { s, t0: ELEMENT_T[i] };
-});
 
 /* ══════════════════════════════════════════════════════
    MATERIALS
@@ -246,11 +180,11 @@ device.add(place(new THREE.Mesh(new THREE.PlaneGeometry(1.92, 2.62), M_glass.clo
 // Lower nameplate
 {
   const [, x, tex] = ctex(512, 192);
-  x.fillStyle = '#070d16'; x.fillRect(0, 0, 512, 192);
+  x.fillStyle = '#0b0c0d'; x.fillRect(0, 0, 512, 192);
   x.textAlign = 'center';
   x.fillStyle = '#d9b24a'; x.font = font(700, 20); x.letterSpacing = '6px'; x.fillText('VIDYUTHLABS', 256, 62);
   x.fillStyle = '#e8eef5'; x.font = font(700, 44, DISPLAY); x.letterSpacing = '0px'; x.fillText('AnalyteX', 256, 116);
-  x.fillStyle = '#4f6274'; x.font = font(500, 16); x.letterSpacing = '3px'; x.fillText('CV · DPV · SWV · CA · EIS', 256, 156);
+  x.fillStyle = '#5c6167'; x.font = font(500, 16); x.letterSpacing = '3px'; x.fillText('CV · DPV · SWV · CA · EIS', 256, 156);
   tex.needsUpdate = true;
   const m = place(new THREE.Mesh(new THREE.PlaneGeometry(2.0, .74), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })), 0, -1.12, .453);
   m.renderOrder = 1; device.add(m);
@@ -271,16 +205,14 @@ scene.add(device);
 function drawStatus(t, state, prog = 0) {
   const c = sx, W = 512, H = 690, cx = W / 2, cy = 300;
   c.clearRect(0, 0, W, H);
-  const bg = c.createRadialGradient(cx, cy, 20, cx, cy, 420);
-  bg.addColorStop(0, '#0b1624'); bg.addColorStop(1, '#03070c');
-  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#0b0c0d'; c.fillRect(0, 0, W, H);
   if (state === 'off') { sTex.needsUpdate = true; return; }
-  const col = { idle: '#38d6ff', ble: '#4d8dff', ready: '#3ddc97', run: '#ffc24a', done: '#3ddc97' }[state];
+  const col = { idle: '#cfd3d8', ble: '#cfd3d8', ready: '#cfd3d8', run: '#d9b24a', done: '#7fc79a' }[state];
   const breathe = .55 + .45 * Math.sin(t * 2.2);
   // faint track
-  c.lineWidth = 10; c.strokeStyle = 'rgba(120,160,200,.10)';
+  c.lineWidth = 4; c.strokeStyle = 'rgba(255,255,255,.07)';
   c.beginPath(); c.arc(cx, cy, 150, 0, Math.PI * 2); c.stroke();
-  c.shadowColor = col; c.shadowBlur = 28;
+  c.lineWidth = 4;
   c.strokeStyle = col; c.lineCap = 'round';
   if (state === 'run') {
     c.beginPath(); c.arc(cx, cy, 150, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(.02, prog)); c.stroke();
@@ -289,18 +221,18 @@ function drawStatus(t, state, prog = 0) {
     c.globalAlpha = 1 - a; c.beginPath(); c.arc(cx, cy, 150 + a * 40, 0, Math.PI * 2); c.stroke();
     c.globalAlpha = 1; c.beginPath(); c.arc(cx, cy, 150, 0, Math.PI * 2); c.stroke();
   } else {
-    c.globalAlpha = state === 'idle' ? .35 + .5 * breathe : 1;
+    c.globalAlpha = state === 'idle' ? .55 + .2 * breathe : 1;
     c.beginPath(); c.arc(cx, cy, 150, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 1;
   }
   c.shadowBlur = 0;
   // emblem: gold dot in an orbit
   c.strokeStyle = 'rgba(217,178,74,.55)'; c.lineWidth = 3;
   c.beginPath(); c.ellipse(cx, cy, 64, 26, -0.5, 0, Math.PI * 2); c.stroke();
-  c.fillStyle = '#d9b24a'; c.shadowColor = '#ffcf6a'; c.shadowBlur = 20;
+  c.fillStyle = '#d9b24a';
   c.beginPath(); c.arc(cx, cy, 15, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
   // small state word under the ring
   const word = { idle: 'READY', ble: 'PHONE CONNECTED', ready: 'SENSOR IN', run: 'MEASURING', done: 'COMPLETE' }[state];
-  c.fillStyle = col; c.globalAlpha = .9; c.font = font(600, 22); c.letterSpacing = '6px'; c.textAlign = 'center';
+  c.fillStyle = '#8d9298'; c.globalAlpha = 1; c.font = font(500, 22); c.letterSpacing = '5px'; c.textAlign = 'center';
   c.fillText(word, cx, 540); c.globalAlpha = 1; c.letterSpacing = '0px';
   sTex.needsUpdate = true;
 }
@@ -333,13 +265,7 @@ const speW = .9, speH = 2.4, speD = .052, WE_Y = .72, WE_R = .3;
   Object.assign(ring.material, { polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 });
   ring.position.set(0, WE_Y, speD / 2 + .006); spe.add(ring);
   const disc = new THREE.Mesh(new THREE.CircleGeometry(WE_R - .015, 72), SENSORS.HM.mat); disc.position.set(0, WE_Y, speD / 2 + .009); spe.add(disc);
-  const gc = document.createElement('canvas'); gc.width = gc.height = 256; const gx = gc.getContext('2d');
-  const gg = gx.createRadialGradient(120, 100, 0, 128, 128, 128);
-  gg.addColorStop(0, 'rgba(255,230,120,.9)'); gg.addColorStop(.35, 'rgba(212,168,32,.7)'); gg.addColorStop(.7, 'rgba(160,120,10,.35)'); gg.addColorStop(1, 'rgba(0,0,0,0)');
-  gx.fillStyle = gg; gx.fillRect(0, 0, 256, 256);
-  const gt = new THREE.CanvasTexture(gc); gt.colorSpace = THREE.SRGBColorSpace;
-  spe.add(place(new THREE.Mesh(new THREE.CircleGeometry(WE_R - .015, 72), new THREE.MeshBasicMaterial({ map: gt, transparent: true, opacity: .32, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })), 0, WE_Y, speD / 2 + .012));
-  const band = new THREE.Mesh(new THREE.BoxGeometry(speW, .08, .065), new THREE.MeshStandardMaterial({ color: 0xe5484d, emissive: 0xe5484d, emissiveIntensity: .55, roughness: .25, metalness: .4, toneMapped: false }));
+  const band = new THREE.Mesh(new THREE.BoxGeometry(speW, .08, .065), new THREE.MeshStandardMaterial({ color: 0xb8383c, roughness: .6, metalness: 0 }));
   band.position.set(0, speH / 2 - .04, speD / 2 + .033); spe.add(band);
 }
 scene.add(spe);
@@ -349,9 +275,9 @@ const SPE_IN = V(0, 3.12, .15);
 const WE_LOCAL = V(0, WE_Y, .08);
 
 /* ── Sample dropper + droplet ── */
-const waterMat = new THREE.MeshPhysicalMaterial({ color: 0x9fdcff, transmission: .5, transparent: true, opacity: .85, roughness: .04, clearcoat: 1, ior: 1.33 });
+const waterMat = new THREE.MeshPhysicalMaterial({ color: 0xdfe9ee, transmission: .5, transparent: true, opacity: .85, roughness: .04, clearcoat: 1, ior: 1.33 });
 const dropper = new THREE.Group();
-dropper.add(new THREE.Mesh(new THREE.CapsuleGeometry(.1, .38, 8, 16), new THREE.MeshPhysicalMaterial({ color: 0x1b3550, roughness: .35, clearcoat: .8 })));
+dropper.add(new THREE.Mesh(new THREE.CapsuleGeometry(.1, .38, 8, 16), new THREE.MeshPhysicalMaterial({ color: 0x2a2b2d, roughness: .55, clearcoat: .2 })));
 const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xe8edf2, roughness: .08, transmission: .7, transparent: true, opacity: .45, ior: 1.47 });
 dropper.add(place(new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .5, 18), glassMat), 0, -.48, 0));
 dropper.add(place(new THREE.Mesh(new THREE.ConeGeometry(.045, .22, 18), glassMat), 0, -.81, 0, Math.PI));
@@ -398,25 +324,25 @@ function plot(c, x, y, w, h, pts, col, frac = 1, opt = {}) {
   const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
   const x0 = opt.x0 ?? Math.min(...xs), x1 = opt.x1 ?? Math.max(...xs), y0 = opt.y0 ?? Math.min(...ys), y1 = opt.y1 ?? Math.max(...ys) * 1.12;
   const X = v => x + (v - x0) / (x1 - x0) * w, Y = v => y + h - (v - y0) / (y1 - y0) * h;
-  c.fillStyle = '#0a1726'; rr(c, x - 14, y - 14, w + 28, h + 28, 14); c.fill();
-  c.strokeStyle = 'rgba(70,110,150,.25)'; c.lineWidth = 1;
+  c.fillStyle = '#141619'; rr(c, x - 14, y - 14, w + 28, h + 28, 14); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.06)'; c.lineWidth = 1;
   for (let g = 0; g <= 4; g++) { const gy = y + h * g / 4; c.beginPath(); c.moveTo(x, gy); c.lineTo(x + w, gy); c.stroke(); }
   const n = Math.max(2, Math.floor(frac * (pts.length - 1)) + 1);
   if (opt.fill) {
-    const gr = c.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, col + '55'); gr.addColorStop(1, col + '00');
+    const gr = c.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, col + '30'); gr.addColorStop(1, col + '00');
     c.beginPath(); c.moveTo(X(pts[0][0]), y + h); for (let i = 0; i < n; i++) c.lineTo(X(pts[i][0]), Y(pts[i][1])); c.lineTo(X(pts[n - 1][0]), y + h); c.closePath(); c.fillStyle = gr; c.fill();
   }
-  c.strokeStyle = col; c.lineWidth = 4; c.lineJoin = c.lineCap = 'round'; c.shadowColor = col; c.shadowBlur = 12;
+  c.strokeStyle = col; c.lineWidth = 3; c.lineJoin = c.lineCap = 'round';
   c.beginPath(); for (let i = 0; i < n; i++) { const [a, b] = pts[i]; i ? c.lineTo(X(a), Y(b)) : c.moveTo(X(a), Y(b)); } c.stroke(); c.shadowBlur = 0;
   const [ha, hb] = pts[n - 1]; c.fillStyle = '#fff'; c.beginPath(); c.arc(X(ha), Y(hb), 6, 0, Math.PI * 2); c.fill();
-  c.fillStyle = '#5d7489'; c.font = font(500, 17); c.textAlign = 'left'; if (opt.xl) c.fillText(opt.xl, x, y + h + 40);
+  c.fillStyle = '#6b7178'; c.font = font(500, 17); c.textAlign = 'left'; if (opt.xl) c.fillText(opt.xl, x, y + h + 40);
   c.textAlign = 'right'; if (opt.yl) c.fillText(opt.yl, x + w, y + h + 40);
   return { X, Y, n };
 }
 
 /* App chrome */
 function appChrome(c, t, title, sub) {
-  c.fillStyle = '#060d17'; c.fillRect(0, 0, PW, PH);
+  c.fillStyle = '#0d0e10'; c.fillRect(0, 0, PW, PH);
   c.fillStyle = '#c9d6e3'; c.font = font(600, 22); c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText('9:41', 34, 40);
   c.textAlign = 'right'; c.fillStyle = '#4d8dff'; c.fillText('ᛒ', PW - 92, 40);
   c.strokeStyle = '#c9d6e3'; c.lineWidth = 2; rr(c, PW - 76, 30, 40, 20, 5); c.stroke(); c.fillStyle = '#c9d6e3'; rr(c, PW - 73, 33, 28, 14, 3); c.fill();
@@ -428,7 +354,7 @@ function appChrome(c, t, title, sub) {
   c.fillStyle = '#3ddc97'; c.beginPath(); c.arc(PW - 188, 112, 6, 0, Math.PI * 2); c.fill();
   c.font = font(600, 17); c.fillText('AnalyteX-7F2A', PW - 174, 118);
   if (title) { c.fillStyle = '#f2f6fa'; c.font = font(700, 40, DISPLAY); c.fillText(title, 34, 212); }
-  if (sub) { c.fillStyle = '#6f8599'; c.font = font(500, 20); c.fillText(sub, 34, 248); }
+  if (sub) { c.fillStyle = '#7f858c'; c.font = font(500, 20); c.fillText(sub, 34, 248); }
 }
 function demoTag(c, y) {
   c.fillStyle = 'rgba(255,194,74,.1)'; rr(c, 34, y, PW - 68, 46, 12); c.fill();
@@ -454,14 +380,14 @@ function drawPhone(t, mode) {
     let cx = 34;
     METHODS.forEach((mm, i) => {
       c.font = font(700, 19); const w = c.measureText(mm.a).width + 34;
-      c.fillStyle = i === idx ? mm.col : '#101d2c'; rr(c, cx, 286, w, 46, 23); c.fill();
-      c.fillStyle = i === idx ? '#04101a' : '#7b90a4'; c.fillText(mm.a, cx + 17, 316); cx += w + 10;
+      c.fillStyle = i === idx ? mm.col : '#17191c'; rr(c, cx, 286, w, 46, 23); c.fill();
+      c.fillStyle = i === idx ? '#04101a' : '#8a9096'; c.fillText(mm.a, cx + 17, 316); cx += w + 10;
     });
     c.fillStyle = '#e9eff5'; c.font = font(700, 30, DISPLAY); c.fillText(m.k, 34, 400);
     const u = span(t, METHOD_T[idx] - .25, (METHOD_T[idx + 1] ?? methodCue.end + .6) - .4);
     plot(c, 50, 440, PW - 100, 420, m.pts, m.col, sm(u), m);
-    c.fillStyle = '#0d1a29'; rr(c, 34, 920, PW - 68, 150, 18); c.fill();
-    c.fillStyle = '#6f8599'; c.font = font(500, 18);
+    c.fillStyle = '#17191c'; rr(c, 34, 920, PW - 68, 150, 18); c.fill();
+    c.fillStyle = '#7f858c'; c.font = font(500, 18);
     ['Range', 'Step', 'Rate'].forEach((l, i) => c.fillText(l, 60 + i * 150, 965));
     c.fillStyle = '#e9eff5'; c.font = font(600, 24);
     const vals = { CV: ['−0.2…0.6 V', '5 mV', '50 mV/s'], DPV: ['−1.1…0.4 V', '5 mV', '50 mV'], SWV: ['−0.3…0.5 V', '4 mV', '25 Hz'], CA: ['+0.4 V', '—', '10 ms'], EIS: ['0.1 Hz…100 kHz', '10/dec', '10 mV'] }[m.a];
@@ -471,16 +397,16 @@ function drawPhone(t, mode) {
     const rows = [['Device', 'AnalyteX-7F2A'], ['Firmware', 'Signed updates'], ['Methods', 'CV · DPV · SWV · CA · EIS'], ['Sensor', 'Insert electrode']];
     rows.forEach(([k, v], i) => {
       const y = 300 + i * 112, a = span(t, cuesOf('methods')[1].start + i * .35, cuesOf('methods')[1].start + i * .35 + .5);
-      c.globalAlpha = a; c.fillStyle = '#0d1a29'; rr(c, 34, y, PW - 68, 92, 16); c.fill();
-      c.fillStyle = '#6f8599'; c.font = font(500, 19); c.fillText(k, 60, y + 38);
+      c.globalAlpha = a; c.fillStyle = '#17191c'; rr(c, 34, y, PW - 68, 92, 16); c.fill();
+      c.fillStyle = '#7f858c'; c.font = font(500, 19); c.fillText(k, 60, y + 38);
       c.fillStyle = '#e9eff5'; c.font = font(600, 24); c.fillText(v, 60, y + 70); c.globalAlpha = 1;
     });
   } else if (mode === 'run') {
     const dep = span(t, A_SWEEP, A_SWEEP + 2.2), sw = span(t, A_SWEEP + 2.2, A_SWEEP_END - .4);
     appChrome(c, t, 'Heavy metals', 'Stripping voltammetry · NanoX HM-1');
-    c.fillStyle = '#0d1a29'; rr(c, 34, 280, PW - 68, 96, 16); c.fill();
-    c.fillStyle = '#6f8599'; c.font = font(500, 18); c.fillText(dep < 1 ? 'Step 1 · Deposition at −1.2 V' : 'Step 2 · DPV stripping sweep', 60, 316);
-    c.fillStyle = '#1a2a3b'; rr(c, 60, 336, PW - 120, 14, 7); c.fill();
+    c.fillStyle = '#17191c'; rr(c, 34, 280, PW - 68, 96, 16); c.fill();
+    c.fillStyle = '#7f858c'; c.font = font(500, 18); c.fillText(dep < 1 ? 'Step 1 · Deposition at −1.2 V' : 'Step 2 · DPV stripping sweep', 60, 316);
+    c.fillStyle = '#24272b'; rr(c, 60, 336, PW - 120, 14, 7); c.fill();
     c.fillStyle = dep < 1 ? '#4d8dff' : '#ffc24a'; rr(c, 60, 336, (PW - 120) * Math.max(.03, dep < 1 ? dep : sw), 14, 7); c.fill();
     const r = plot(c, 50, 440, PW - 100, 440, DPV_PTS, '#e5484d', sw, { xl: 'E / V vs Ag/AgCl', yl: 'Δi', fill: true });
     HM_PEAKS.forEach(p => {
@@ -501,13 +427,13 @@ function drawPhone(t, mode) {
       const a = span(t, r0 + .3 + i * .45, r0 + .8 + i * .45); if (a <= 0) return;
       const y = 378 + i * 132, over = v > lim, col = over ? '#ff6b6f' : '#3ddc97';
       c.globalAlpha = a;
-      c.fillStyle = '#0d1a29'; rr(c, 34, y, PW - 68, 116, 16); c.fill();
+      c.fillStyle = '#17191c'; rr(c, 34, y, PW - 68, 116, 16); c.fill();
       c.fillStyle = '#e9eff5'; c.font = font(600, 24); c.fillText(n, 60, y + 44);
-      c.fillStyle = '#6f8599'; c.font = font(500, 18); c.fillText(`limit ${lim} µg/L`, 60, y + 76);
+      c.fillStyle = '#7f858c'; c.font = font(500, 18); c.fillText(`limit ${lim} µg/L`, 60, y + 76);
       c.fillStyle = col; c.font = font(700, 36, DISPLAY); c.textAlign = 'right'; c.fillText(v.toFixed(1), PW - 120, y + 52);
-      c.fillStyle = '#6f8599'; c.font = font(500, 18); c.fillText('µg/L', PW - 60, y + 52);
+      c.fillStyle = '#7f858c'; c.font = font(500, 18); c.fillText('µg/L', PW - 60, y + 52);
       c.fillStyle = col; c.font = font(700, 15); c.fillText(over ? 'ABOVE LIMIT' : 'WITHIN LIMIT', PW - 60, y + 86); c.textAlign = 'left';
-      c.fillStyle = '#1a2a3b'; rr(c, 60, y + 96, PW - 120, 6, 3); c.fill();
+      c.fillStyle = '#24272b'; rr(c, 60, y + 96, PW - 120, 6, 3); c.fill();
       c.fillStyle = col; rr(c, 60, y + 96, (PW - 120) * Math.min(1, v / lim / 2) * sm(a), 6, 3); c.fill();
       c.globalAlpha = 1;
     });
@@ -519,10 +445,10 @@ function drawPhone(t, mode) {
     Object.values(SENSORS).forEach((s, i) => {
       const y = 290 + i * 160, a = span(t, T.platform + .4 + i * .5, T.platform + .9 + i * .5);
       c.globalAlpha = a;
-      c.fillStyle = '#0d1a29'; rr(c, 34, y, PW - 68, 140, 18); c.fill();
+      c.fillStyle = '#17191c'; rr(c, 34, y, PW - 68, 140, 18); c.fill();
       c.fillStyle = s.hex; rr(c, 34, y, 10, 140, 5); c.fill();
       c.fillStyle = '#e9eff5'; c.font = font(700, 28, DISPLAY); c.fillText(s.name, 70, y + 56);
-      c.fillStyle = '#6f8599'; c.font = font(500, 19); c.fillText(s.analytes, 70, y + 92);
+      c.fillStyle = '#7f858c'; c.font = font(500, 19); c.fillText(s.analytes, 70, y + 92);
       const live = s.live, w = live ? 170 : 190;
       c.fillStyle = live ? 'rgba(61,220,151,.14)' : 'rgba(150,170,190,.1)'; rr(c, PW - 68 - w, y + 30, w, 40, 20); c.fill();
       c.fillStyle = live ? '#3ddc97' : '#8ea2b5'; c.font = font(600, 17); c.textAlign = 'center'; c.fillText(s.status, PW - 68 - w / 2, y + 56); c.textAlign = 'left';
@@ -539,15 +465,15 @@ const orbit = Object.entries(SENSORS).map(([k, s], i) => {
   const g = new THREE.Group();
   g.add(Object.assign(new THREE.Mesh(new RoundedBoxGeometry(.55, 1.5, .05, 3, .025), M_speBase), { castShadow: true }));
   const col = new THREE.Color(s.hex);
-  g.add(place(new THREE.Mesh(new THREE.BoxGeometry(.55, .068, .07), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: .8, toneMapped: false })), 0, .69, .032));
+  g.add(place(new THREE.Mesh(new THREE.BoxGeometry(.55, .068, .07), new THREE.MeshStandardMaterial({ color: col, roughness: .6 })), 0, .69, .032));
   g.add(place(new THREE.Mesh(new THREE.CircleGeometry(.18, 40), s.mat), 0, .32, .028));
   g.add(place(new THREE.Mesh(new THREE.RingGeometry(.185, .21, 40), M_gold), 0, .32, .03));
   [-.16, 0, .16].forEach(px => g.add(place(new THREE.Mesh(new THREE.BoxGeometry(.12, .25, .01), M_gold), px, -.62, .028)));
   // name tag
   const [, x, tex] = ctex(512, 160);
   x.textAlign = 'center';
-  x.fillStyle = s.hex; x.font = font(700, 44, DISPLAY); x.fillText(s.name.toUpperCase(), 256, 64);
-  x.fillStyle = s.live ? '#3ddc97' : '#8ea2b5'; x.font = font(600, 30); x.letterSpacing = '4px'; x.fillText(s.status.toUpperCase(), 256, 122);
+  x.fillStyle = '#e8eaed'; x.font = font(600, 40); x.fillText(s.name, 256, 64);
+  x.fillStyle = s.live ? '#d9b24a' : '#7f858c'; x.font = font(500, 28); x.fillText(s.status, 256, 118);
   tex.needsUpdate = true;
   const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, toneMapped: false, depthWrite: false }));
   tag.scale.set(1.9, .6, 1); tag.visible = false; scene.add(tag);
@@ -555,19 +481,9 @@ const orbit = Object.entries(SENSORS).map(([k, s], i) => {
   return { g, tag, a0: i / 4 * Math.PI * 2 };
 });
 
-/* Finale rings */
-const rings = [[2.0, 1.1], [2.8, 1.6], [3.6, 2.0]].map(([R, rx]) => {
-  const m = new THREE.Mesh(new THREE.TorusGeometry(R, .006, 8, 120), new THREE.MeshBasicMaterial({ color: 0x38d6ff, transparent: true, opacity: .6, toneMapped: false }));
-  m.rotation.x = rx; m.visible = false; scene.add(m); return m;
-});
-const goldRing = new THREE.Mesh(new THREE.TorusGeometry(4.3, .01, 8, 160), new THREE.MeshBasicMaterial({ color: 0xffc24a, transparent: true, opacity: .55, toneMapped: false }));
-goldRing.rotation.x = 1.35; goldRing.visible = false; scene.add(goldRing);
-
 /* Post */
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .28, .5, .9);
-composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
 /* ══════════════════════════════════════════════════════
@@ -576,19 +492,19 @@ composer.addPass(new OutputPass());
 ══════════════════════════════════════════════════════ */
 const PH_L = V(PHONE_SIDE.p.x, PHONE_SIDE.p.y, PHONE_SIDE.p.z);
 const SHOTS = [
-  // cold open: drift through the "water", device barely lit
-  [T.cold, T.reveal, V(0, 1.4, 24), V(0, .6, 0), V(0, 1.0, 12.5), V(0, .5, 0)],
+  // cold open: slow push on the unlit device
+  [T.cold, T.reveal, V(0, .9, 14.5), V(0, .5, 0), V(0, .8, 11.5), V(0, .5, 0)],
   // reveal: low three-quarter, slow arc to the front
   [T.reveal, T.reveal + 5.2, V(3.6, -.2, 7.0), V(0, .2, 0), V(2.6, .5, 8.0), V(0, .3, 0)],
   [T.reveal + 5.2, T.methods, V(2.6, .5, 8.0), V(0, .3, 0), V(-1.9, 1.1, 8.6), V(0, .4, 0)],
   // methods: phone in, device behind
-  [T.methods, A_INSERT, V(-1.3, .25, 6.9), V(-1.35, -.05, .9), V(-.9, .4, 6.5), V(-1.2, -.05, .9)],
+  [T.methods, A_INSERT, V(-1.4, .3, 8.6), V(-1.0, -.05, .9), V(-.9, .45, 8.0), V(-.9, -.05, .9)],
   // assay: electrode descends into the slot
   [A_INSERT, A_DROP, V(1.6, 4.5, 4.4), V(0, 3.4, .15), V(.7, 4.1, 3.0), V(0, 3.4, .15)],
   // the drop, macro on the working electrode
   [A_DROP, A_SWEEP, V(.55, 4.6, 2.35), V(0, 3.82, .15), V(.3, 4.3, 1.9), V(0, 3.84, .15)],
   // the sweep: device and phone together
-  [A_SWEEP, T.result, V(-.7, 1.0, 8.6), V(-.95, .45, .5), V(-1.0, .8, 7.8), V(-1.0, .4, .6)],
+  [A_SWEEP, T.result, V(-.7, 1.0, 9.4), V(-.8, .45, .5), V(-1.0, .8, 8.6), V(-.85, .4, .6)],
   // result: phone fills the frame
   [T.result, T.platform, V(-1.5, .1, 6.6), PH_L.clone().add(V(0, -.25, 0)), V(-1.7, 0, 5.9), PH_L.clone().add(V(0, -.25, 0))],
   // platform: high orbit
@@ -597,12 +513,19 @@ const SHOTS = [
   [T.finale, DUR + 1, V(2.0, .8, 7.0), V(0, 1.0, 0), V(0, 1.6, 11.5), V(0, 1.2, 0)],
 ];
 const CUTS = SHOTS.slice(1).filter((s, i) => !s[2].equals(SHOTS[i][4])).map(s => s[0]);
-const _p = new THREE.Vector3(), _l = new THREE.Vector3();
+const _p = new THREE.Vector3(), _l = new THREE.Vector3(), _off = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
 function camAt(t) {
   const s = SHOTS.find(s => t >= s[0] && t < s[1]) || SHOTS[SHOTS.length - 1];
   const u = sm2(span(t, s[0], s[1]));
   _p.lerpVectors(s[2], s[4], u); _l.lerpVectors(s[3], s[5], u);
   _p.sub(_l).multiplyScalar(distK).add(_l);
+  // On wide screens, slide the frame so the subject sits right of centre and the
+  // type on the left has clear space. Off for the finale (centred end card).
+  if (camera.aspect > 1.2) {
+    const k = .2 * (1 - span(t, T.finale - 1.5, T.finale)) * _off.subVectors(_p, _l).length() * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+    _off.subVectors(_l, _p).cross(_up).normalize().multiplyScalar(-k);
+    _p.add(_off); _l.add(_off);
+  }
   return { p: _p, l: _l };
 }
 
@@ -610,9 +533,9 @@ function camAt(t) {
    DOM HOOKS
 ══════════════════════════════════════════════════════ */
 const $ = id => document.getElementById(id);
-const capEl = $('cap'), lowerEl = $('lower'), lowerN = $('lower-n'), lowerT = $('lower-t');
+const capEl = $('cap');
 const dipEl = $('dip'), endEl = $('endcard');
-const voEl = $('vo'), musicEl = $('music');
+const musicEl = $('music'), voEl = musicEl; // one audio track: the music
 
 /* ══════════════════════════════════════════════════════
    FRAME — pure function of t (seek-safe)
@@ -622,23 +545,13 @@ function frame(t) {
 
   /* Light: the device is a silhouette until the reveal */
   const lit = sm(span(t, T.reveal - 1.2, T.reveal + 1.5));
-  keyL.intensity = lp(.12, 2.4, lit); fillL.intensity = lp(.05, .3, lit);
-  scene.environmentIntensity = lp(.12, .55, lit);
-  // top-down assay close-ups catch the rim light's glint on the floor: dim it there
-  const topDown = span(t, A_INSERT - .3, A_INSERT) * (1 - span(t, A_SWEEP - .3, A_SWEEP));
-  rimL.intensity = (1.3 + (1 - lit) * .6) * (1 - .85 * topDown);
-  pMat.opacity = lp(.75, .32, lit);
-
-  /* Element labels in the cold open */
-  elemSprites.forEach(({ s, t0 }, i) => {
-    const a = span(t, t0 - .1, t0 + .5) * (1 - span(t, T.reveal - 1.6, T.reveal - .4));
-    s.material.opacity = a; s.visible = a > 0.01;
-    s.position.y = [1.6, .4, -.4][i] + Math.sin(t * .6 + i) * .08;
-  });
+  keyL.intensity = lp(.05, 2.2, lit); fillL.intensity = lp(0, .45, lit);
+  scene.environmentIntensity = lp(.05, .45, lit);
+  rimL.intensity = lp(.35, .9, lit); // only an edge of the device shows before the reveal
 
   /* Electrode position */
   if (t < A_INSERT) {
-    spe.visible = t >= T.methods - .2;
+    spe.visible = t >= A_INSERT - .2;
     spe.position.copy(SPE_ABOVE).add(V(0, 3, 0)); spe.rotation.set(0, 0, 0);
   } else {
     spe.visible = true;
@@ -648,11 +561,6 @@ function frame(t) {
   }
   spe.updateMatrixWorld(true);
   const we = spe.localToWorld(WE_LOCAL.clone());
-
-  /* Seat flash + accent light */
-  const seat = span(t, A_INSERT + 2.7, A_INSERT + 3.0) * (1 - span(t, A_INSERT + 3.0, A_INSERT + 3.8));
-  accentL.intensity = 0.3 + seat * 2.2 + (inScene('assay') ? .4 : 0);
-  accentL.color.set(t > A_SWEEP && t < T.result ? 0xffc24a : 0x38d6ff);
 
   /* Dropper */
   const d = t - A_DROP;
@@ -676,7 +584,6 @@ function frame(t) {
   else if (t >= A_SWEEP && t < A_SWEEP_END) { st = 'run'; prog = span(t, A_SWEEP, A_SWEEP_END); }
   else if (t >= A_SWEEP_END && t < T.platform) st = 'done';
   drawStatus(t, st, prog);
-  goldL.intensity = st === 'run' ? .9 + Math.sin(t * 6) * .2 : 0;
 
   /* Device idle motion */
   device.rotation.y = inScene('reveal') ? Math.sin((t - T.reveal) * .35) * .18 : 0;
@@ -711,11 +618,6 @@ function frame(t) {
     }
   });
 
-  /* Finale rings */
-  const fu = sm(span(t, T.finale, T.finale + 3));
-  rings.forEach((r, i) => { r.visible = fu > 0; r.scale.setScalar(fu); r.rotation.z = (t - T.finale) * (.1 + i * .04); r.position.y = .4; });
-  goldRing.visible = fu > 0; goldRing.scale.setScalar(fu); goldRing.rotation.z = -(t - T.finale) * .06; goldRing.position.y = .2;
-
   /* Dips at hard cuts */
   let dip = 0;
   for (const c of CUTS) dip = Math.max(dip, 1 - Math.abs(t - c) / .32);
@@ -723,16 +625,11 @@ function frame(t) {
   dip = Math.max(dip, span(t, DUR - 1.2, DUR) * .0);   // end card covers the tail
   dipEl.style.opacity = c01(dip).toFixed(3);
 
-  /* Captions */
+  /* On-screen type */
   const cue = CUES.find(c => t >= c.start - .05 && t < c.end + .35);
   const txt = cue ? cue.text : '';
   if (capEl.dataset.txt !== txt) { capEl.dataset.txt = txt; capEl.textContent = txt; }
   capEl.classList.toggle('on', !!txt);
-
-  /* Lower-third chapter label */
-  const ch = CHAPTERS.filter(c => c.n).find(c => t >= c.t + .5 && t < c.t + 4.2);
-  if (ch) { if (lowerT.textContent !== ch.label) { lowerN.textContent = ch.n; lowerT.textContent = ch.label; } }
-  lowerEl.classList.toggle('on', !!ch);
 
   /* End card */
   endEl.classList.toggle('on', t >= T.finale + 3.6);
@@ -742,9 +639,9 @@ function frame(t) {
 }
 
 /* ══════════════════════════════════════════════════════
-   PLAYBACK — the voiceover is the master clock
+   PLAYBACK — the music is the master clock
 ══════════════════════════════════════════════════════ */
-const MUSIC_OFF = Math.max(0, DUR - 78.0); // music bed ends with the film
+const MUSIC_OFF = 0;
 let state = 'idle';   // idle | playing | paused | ended
 let t = 0, lastNow = performance.now(), audioOK = true;
 
@@ -781,11 +678,8 @@ function start() {
 ══════════════════════════════════════════════════════ */
 const ui = (() => {
   const bar = $('controls'), btn = $('pp'), track = $('track'), fill = $('fill'), timeEl = $('time');
-  const ccBtn = $('cc'), muteBtn = $('mute');
-  let hideTimer = 0, captions = true, muted = false;
-  try { captions = localStorage.getItem('ax-cc') !== '0'; } catch (e) {}
-  document.body.classList.toggle('nocc', !captions);
-  ccBtn.setAttribute('aria-pressed', String(captions));
+  const muteBtn = $('mute');
+  let hideTimer = 0, muted = false;
   const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   // chapter ticks
   CHAPTERS.slice(1).forEach(c => {
@@ -801,11 +695,6 @@ const ui = (() => {
     if (e.key === 'ArrowLeft') { seek(t - 5); e.preventDefault(); }
   };
   btn.onclick = () => state === 'playing' ? pause() : play();
-  ccBtn.onclick = () => {
-    captions = !captions; document.body.classList.toggle('nocc', !captions);
-    ccBtn.setAttribute('aria-pressed', String(captions));
-    try { localStorage.setItem('ax-cc', captions ? '1' : '0'); } catch (e) {}
-  };
   muteBtn.onclick = () => {
     muted = !muted; voEl.muted = musicEl.muted = muted;
     muteBtn.setAttribute('aria-pressed', String(muted)); muteBtn.textContent = muted ? 'Sound off' : 'Sound on';
@@ -823,7 +712,6 @@ const ui = (() => {
     if (k === ' ' || k === 'k') { btn.click(); e.preventDefault(); }
     else if (k === 'arrowright') seek(t + 5);
     else if (k === 'arrowleft') seek(t - 5);
-    else if (k === 'c') ccBtn.click();
     else if (k === 'm') muteBtn.click();
     else return;
     wake();
@@ -851,22 +739,16 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pause
 
 addEventListener('resize', () => {
   setFov(); renderer.setSize(innerWidth, innerHeight);
-  composer.setSize(innerWidth, innerHeight); bloom.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
 });
 
 /* ══════════════════════════════════════════════════════
    LOOP
 ══════════════════════════════════════════════════════ */
 function render(now) {
-  // gentle handheld sway (off for reduced motion and export)
+  // locked-off camera moves only; no fake handheld shake
   const { p, l } = camAt(t);
-  if (!REDUCED && !CAPTURE) {
-    const n = now * .001;
-    p.x += Math.sin(n * .42) * .014 + Math.cos(n * .73) * .007;
-    p.y += Math.cos(n * .51) * .012 + Math.sin(n * .88) * .006;
-  }
   camera.position.copy(p); camera.lookAt(l);
-  animParticles(t, camera.position);
   composer.render();
 }
 function loop(now) {
@@ -875,12 +757,11 @@ function loop(now) {
   const dt = Math.min(.1, (now - lastNow) / 1000); lastNow = now;
   if (state === 'playing') {
     t += dt;
-    // follow the voiceover; it is the source of truth when audible
+    // follow the music; it is the source of truth when audible
     if (audioOK && !voEl.paused && !voEl.seeking && Math.abs(voEl.currentTime - t) > .12 && voEl.currentTime < (voEl.duration || 1e9) - .05) t = voEl.currentTime;
     if (!musicEl.muted && musicEl.paused && t >= MUSIC_OFF && t < DUR - .5 && !musicEl.ended) { try { musicEl.currentTime = t - MUSIC_OFF; musicEl.play().catch(() => {}); } catch (e) {} }
-    // duck the music under speech, fade it out at the end
-    const speaking = CUES.some(c => t >= c.start - .2 && t < c.end + .2);
-    const target = (speaking ? .16 : .34) * (1 - span(t, DUR - 3, DUR));
+    // fade the music out at the end
+    const target = .7 * (1 - span(t, DUR - 3, DUR));
     musicEl.volume = c01(lp(musicEl.volume, target, Math.min(1, dt * 3)));
     if (t >= DUR) { t = DUR; state = 'ended'; syncAudio(false); ui.update(); }
     frame(t);
@@ -889,7 +770,7 @@ function loop(now) {
     const a = now * .00012;
     frame(T.methods - 1.2);
     camera.position.set(Math.sin(a) * 7, 1.2, Math.cos(a) * 7); camera.lookAt(0, .4, 0);
-    animParticles(now * .001); composer.render(); return;
+    capEl.classList.remove('on'); composer.render(); return;
   }
   render(now);
 }

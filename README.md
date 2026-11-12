@@ -1,8 +1,12 @@
 # AnalyteX — product film
 
-A narrated, real-time WebGL film of **AnalyteX**, the portable potentiostat from
+A real-time WebGL film of **AnalyteX**, the portable potentiostat from
 [Vidyuthlabs](https://vidyuthlabs.co.in). It runs in the browser (Three.js), is
-about 1 min 27 s long, and plays on phones as well as desktops.
+1 min 18 s long, and plays on phones as well as desktops.
+
+The look is deliberately plain: a graphite studio sweep, one soft key light, real
+shadows, no bloom, glow, particles, sci-fi grid or synthetic voiceover. The only
+words are short on-screen type lines; the sound is the music bed.
 
 Live: **https://vidyuthlabs-analytex.web.app**
 
@@ -10,7 +14,7 @@ Live: **https://vidyuthlabs-analytex.web.app**
 
 | # | Chapter | What the viewer sees |
 |---|---|---|
-| — | Cold open | Invisible contaminants (Pb, Cd, As) drifting in the dark: "Finding them usually means a lab, a courier, and days of waiting." |
+| — | Cold open | The unlit device: "Lead. Cadmium. Arsenic. You can't see them in water." |
 | 01 | The instrument | AnalyteX is lit up and introduced as a portable potentiostat |
 | 02 | Five techniques | CV, DPV, SWV, CA and EIS, chosen in the phone app and sent over Bluetooth |
 | 03 | One drop | A NanoX screen-printed electrode goes in, a drop of sample goes on, the sweep runs |
@@ -40,39 +44,26 @@ becomes true.
 ```
 index.html          page, overlays, controls, start screen and end card
 main.js             the whole film: scene, device, electrode, phone app, camera, playback
-timeline.json       voiceover cues (start/end/text); drives captions and scene timing
-vo.mp3              narration (en-GB-RyanNeural via edge-tts)
-music.mp3           music bed
+timeline.json       on-screen type cues (start/end/text); drives scene and camera timing
+music.mp3           music bed (78 s; the film's clock)
 vendor/three/       Three.js, vendored so the film works offline
-tools/gen_vo.py     regenerates vo.mp3 + timeline.json from the script
 tools/capture.mjs   exports the film to MP4, frame-exact
 tools/check_claims.mjs  product-claims guard
 ```
 
-There is one clock. The voiceover is the master; every scene, camera shot and caption is placed
-relative to the cue times in `timeline.json`, so editing a line and regenerating the voice moves
-the picture with it.
-
-## Editing the script
-
-Edit `LINES` in `tools/gen_vo.py`, then:
-
-```bash
-pip install edge-tts           # and have ffmpeg on PATH
-python tools/gen_vo.py         # writes vo.mp3 and timeline.json
-```
-
-`SAY` in the same file maps written words to how they should be spoken
-(for example "Vidyuthlabs" is spoken as "Vidyuth Labs").
+There is one clock: the music. Every scene, camera shot and type line is placed relative to the
+cue times in `timeline.json`, so moving a cue moves the picture with it. Edit the text or times
+there directly; keep the number of cues per scene the same (`main.js` reads the assay beats from
+them).
 
 ## Viewer features
 
-- Play/pause, seek bar with chapter marks, captions toggle (remembered), mute.
+- Play/pause, seek bar with chapter marks, mute.
 - Keys: <kbd>Space</kbd>/<kbd>K</kbd> play/pause, <kbd>←</kbd>/<kbd>→</kbd> seek 5 s,
-  <kbd>C</kbd> captions, <kbd>M</kbd> mute. Pauses when the tab is hidden.
+  <kbd>M</kbd> mute. Pauses when the tab is hidden.
 - `?t=42` opens paused at 42 s (deep link to a chapter).
-- Portrait phones get a wider camera so the device and phone stay in frame.
-- Respects `prefers-reduced-motion`.
+- Portrait phones get a wider camera so the device and phone stay in frame. On wide screens the
+  subject is framed right of centre so the type has clear space on the left.
 
 ## Export to MP4
 
@@ -85,8 +76,7 @@ node tools/capture.mjs --width 1920 --height 1080 --fps 30
 
 It opens the film with `?capture`, which hides the UI, turns off CSS transitions and stops the
 render loop, then seeks to every frame with `window.__film.seek(t)`. Frames are encoded with
-ffmpeg and the audio is mixed the same way the player mixes it (music ducks under the voice and
-fades out at the end). Use `--to 10` to export only the first 10 seconds for a quick check.
+ffmpeg with the music bed, faded out over the last 3 s. Use `--to 10` to export only the first 10 seconds for a quick check.
 
 ## Deploy
 
