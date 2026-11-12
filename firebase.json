@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "tools/**", "README.md", "package.json", "*.mp4"],
+    "headers": [
+      { "source": "**/*.@(mp3|js)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }] },
+      { "source": "timeline.json", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+    ]
+  }
+}

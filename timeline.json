@@ -1,0 +1,84 @@
+{
+ "voice": "en-GB-RyanNeural",
+ "duration": 86.65,
+ "cues": [
+  {
+   "scene": "cold",
+   "start": 1.2,
+   "end": 6.25,
+   "text": "You can't see lead in water. Or cadmium. Or arsenic."
+  },
+  {
+   "scene": "cold",
+   "start": 6.7,
+   "end": 10.41,
+   "text": "Finding them usually means a lab, a courier, and days of waiting."
+  },
+  {
+   "scene": "reveal",
+   "start": 13.0,
+   "end": 15.44,
+   "text": "Meet AnalyteX, from Vidyuthlabs."
+  },
+  {
+   "scene": "reveal",
+   "start": 16.4,
+   "end": 20.58,
+   "text": "A portable potentiostat, built around a precision electrochemical front end."
+  },
+  {
+   "scene": "methods",
+   "start": 23.5,
+   "end": 32.94,
+   "text": "Cyclic voltammetry. Differential pulse. Square wave. Chronoamperometry. Impedance."
+  },
+  {
+   "scene": "methods",
+   "start": 33.39,
+   "end": 37.32,
+   "text": "Five laboratory techniques, controlled from your phone over Bluetooth."
+  },
+  {
+   "scene": "assay",
+   "start": 38.6,
+   "end": 40.46,
+   "text": "Insert a screen-printed electrode."
+  },
+  {
+   "scene": "assay",
+   "start": 41.5,
+   "end": 42.53,
+   "text": "Add a drop of sample."
+  },
+  {
+   "scene": "assay",
+   "start": 47.5,
+   "end": 53.03,
+   "text": "AnalyteX runs the sweep. Each peak is a metal, and its height tells you how much."
+  },
+  {
+   "scene": "result",
+   "start": 56.0,
+   "end": 60.06,
+   "text": "Results arrive on your phone, checked against Indian drinking-water limits."
+  },
+  {
+   "scene": "platform",
+   "start": 63.5,
+   "end": 65.98,
+   "text": "Change the electrode, and you change the test."
+  },
+  {
+   "scene": "platform",
+   "start": 67.5,
+   "end": 73.83,
+   "text": "Heavy metals come first. Formalin, pesticide and soil-nutrient sensors are in development."
+  },
+  {
+   "scene": "finale",
+   "start": 76.5,
+   "end": 79.65,
+   "text": "AnalyteX. Know what's in your water."
+  }
+ ]
+}

@@ -1,20 +1,11 @@
-# Python voiceover generation artefacts
-temp_ryan/
-temp_vo/
-vo_parts/
-*.pyc
+# Python
 __pycache__/
+*.pyc
+.vo_parts/
 
-# Generated audio variants (keep only vo_ryan.mp3 and music.mp3)
-vo.mp3
-vo_v2.mp3
-vo_v3.mp3
-rishi_preview.mp3
-test.mp3
-
-# Video export
-.frames/
+# Video export (tools/capture.mjs)
 analytex_film.mp4
+.video_only.mp4
 
 # Node
 node_modules/
