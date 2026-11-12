@@ -59,18 +59,30 @@ jobs:
       id-token: write
 
     steps:
+      - name: Check for Firebase credentials
+        id: sa
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$SA" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::FIREBASE_SERVICE_ACCOUNT secret is not set; skipping Firebase deploy."; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+
       - name: Checkout
+        if: steps.sa.outputs.ok == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: steps.sa.outputs.ok == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install Firebase CLI
+        if: steps.sa.outputs.ok == 'true'
         run: npm install -g firebase-tools
 
       - name: Deploy to Firebase Hosting
+        if: steps.sa.outputs.ok == 'true'
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
@@ -79,6 +91,7 @@ jobs:
           firebase deploy --only hosting --project vidyuthlabs-analytex
 
       - name: Post deployment URL
+        if: steps.sa.outputs.ok == 'true'
         run: |
           echo "🚀 Deployed!"
           echo "🌐 Live URL: https://vidyuthlabs-analytex.web.app"
@@ -97,10 +110,20 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Check for Firebase credentials
+        id: sa
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$SA" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::FIREBASE_SERVICE_ACCOUNT secret is not set; skipping Firebase deploy."; echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+
       - name: Checkout
+        if: steps.sa.outputs.ok == 'true'
         uses: actions/checkout@v4
 
       - name: Deploy Preview Channel
+        if: steps.sa.outputs.ok == 'true'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
